@@ -1,146 +1,174 @@
 <!doctype html>
 <html lang="ja">
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ごみ分別データベース（MVP）</title>
-<link rel="stylesheet" href="https://unpkg.com/mvp.css">
-<style>
-  :root { --primary:#1976d2; --muted:#6b7280; }
-  main { max-width: 1000px; margin: 0 auto; padding: 0 12px; }
-  /* 都市コンボ＋キーワード＋検索/リセット（4カラム） */
-  .toolbar { display:grid; gap:.75rem; grid-template-columns: 2fr 2fr auto auto; align-items:end; }
-  @media (max-width: 720px){ .toolbar { grid-template-columns: 1fr 1fr; } }
-  .muted { color:var(--muted); }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ごみ分別データベース</title>
+  <link rel="stylesheet" href="src/styles/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
 
-  /* コンボボックス */
-  .combo { position: relative; }
-  .combo input[type="text"]{ width:100%; }
-  .suggest {
-    position:absolute; inset:auto 0 0 0; top:100%; margin-top:4px;
-    background:#fff; border:1px solid #e5e7eb; border-radius:8px;
-    max-height: 280px; overflow:auto; z-index:1003; box-shadow:0 8px 24px rgba(0,0,0,.08);
-    display:none;
-  }
-  .suggest.open{ display:block; }
-  .suggest ul{ list-style:none; margin:0; padding:4px; }
-  .suggest li{
-    padding:8px 10px; border-radius:6px; cursor:pointer; line-height:1.2;
-    display:flex; gap:6px; align-items:center;
-  }
-  .suggest li:hover, .suggest li[aria-selected="true"]{ background:#f1f5f9; }
-  .badge{ font:12px/1 system-ui; color:#334155; background:#e2e8f0; border-radius:999px; padding:2px 6px; }
-  .cityline{ display:flex; gap:6px; align-items:center; }
-  .pref{ color:#475569; }
-
-  /* テーブル */
-  .table-wrap { overflow-x:auto; border:1px solid #e5e7eb; border-radius:8px; }
-  table { width:100%; border-collapse:collapse; table-layout:auto; }
-  thead th { position:sticky; top:0; background:var(--primary); color:#fff; cursor:pointer; }
-  th, td { padding:6px 8px; border-bottom:1px solid #eee; vertical-align:top; }
-  tbody tr:nth-child(odd){ background:#f8fbff; }
-  thead th:nth-child(1){ width: 8.5em; }
-  thead th:nth-child(2){ width: 12em; }
-  thead th:nth-child(3){ width: 16em; }
-  thead th:nth-child(4){ width: 12em; }
-  td:nth-child(1), td:nth-child(2), td:nth-child(4){ white-space:nowrap; }
-  td:nth-child(3){ white-space:normal; }
-
-  /* カード（モバイル） */
-  .cards { display:grid; gap:12px; }
-  .card { border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; background:#fff; }
-  .card h3 { margin:0 0 6px; font-size:16px; line-height:1.3; }
-  .meta { color:var(--muted); font-size:12px; margin-bottom:8px; }
-  .btn-row { display:flex; gap:8px; margin-top:4px; }
-
-  button.linklike {
-    background:none; border:none; color:#1d4ed8; padding:0; margin:0;
-    font: inherit; text-decoration: underline; cursor:pointer; line-height:1.2;
-  }
-  button.linklike:hover { text-decoration: none; }
-
-  /* ページャ */
-  .view-toggle { display:flex; gap:8px; align-items:center; justify-content:flex-end; margin:.5rem 0; }
-
-  /* モーダル */
-  dialog { width:min(720px, 96vw); border:none; border-radius:12px; padding:0; z-index:1000; }
-  dialog::backdrop { background: rgba(0,0,0,.35); }
-  .modal article { padding:12px 16px 16px; position: relative; }
-  .modal header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; color:#111; }
-  .modal h3 { margin:0; font-size:18px; }
-  .close-btn{
-    position: absolute; top: 8px; right: 10px; width: 28px; height: 28px;
-    display:flex; align-items:center; justify-content:center;
-    background:#fff; color:#111; border:1px solid #e5e7eb; border-radius:999px;
-    font-size:18px; line-height:1; cursor:pointer; pointer-events:auto; z-index:1002;
-  }
-  .close-btn:hover { opacity:.9; }
-  .kv { display:grid; grid-template-columns: 9em 1fr; gap:6px 12px; }
-  .kv b { color:#111; text-align:right; }
-  .kv div { word-break:break-word; }
-</style>
-
-<header>
-  <h1>ごみ分別データベース</h1>
-  <p class="muted">スマホ優先。表は「都道府県 / 市区町村 / 品名 / 分別」＋詳細はポップアップ。</p>
+<header class="site-header">
+  <div class="container">
+    <h1 class="site-title" data-i18n="title">ごみ分別データベース</h1>
+    <p class="site-subtitle" data-i18n="subtitle">スマホ優先。表は「都道府県 / 市区町村 / 品名 / 分別」＋詳細はポップアップ。</p>
+    <div class="meta-bar">
+      <small id="metaInfo">…</small>
+      <button id="copyLink" class="btn btn-sm btn-secondary" type="button" data-i18n="actions.copyLink">検索条件のリンクをコピー</button>
+    </div>
+  </div>
 </header>
 
-<main>
-  <section class="toolbar">
-    <!-- ▼ 市区町村：検索コンボ（タイプアヘッド） -->
-    <label>市区町村<br>
-      <div class="combo" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-owns="citySuggest">
-        <input id="cityInput" type="text" placeholder="例：横浜市 / 大阪市 / 札幌…" autocomplete="off" aria-autocomplete="list" />
-        <div id="citySuggest" class="suggest" role="listbox" aria-label="市区町村候補">
-          <ul></ul>
-        </div>
-      </div>
-    </label>
-    <!-- ▼ キーワード -->
-    <label>キーワード<br><input id="q" placeholder="品名・注意など" /></label>
-    <button id="search">検索</button>
-    <button id="reset" class="secondary">リセット</button>
+<main class="container">
+  <section class="guide-panel card" aria-labelledby="guideTitle" role="note">
+    <h2 id="guideTitle">使い方のポイント</h2>
+    <p class="muted">最短3ステップでごみの出し方を調べられます。</p>
+    <ol class="guide-steps">
+      <li>ステップ1で都道府県と市区町村を選びます。</li>
+      <li>ステップ2でカテゴリまたはキーワードを入力し「検索」します。</li>
+      <li>結果の行またはカードをタップすると詳細や出典が開きます。</li>
+    </ol>
+    <p class="text-sm muted">検索結果上部の「検索条件のリンクをコピー」から、家族や同僚へ条件を共有できます。</p>
   </section>
 
-  <div class="view-toggle">
-    <label class="muted">表示</label>
-    <select id="displayMode">
-      <option value="auto" selected>自動（モバイル=カード/PC=表）</option>
-      <option value="cards">カード</option>
-      <option value="table">表</option>
-    </select>
-    <label class="muted">件数</label>
-    <select id="pageSize"><option>25</option><option selected>50</option><option>100</option><option>200</option></select>
-    <button id="prev" class="secondary">前へ</button>
-    <span id="pageInfo" class="muted">1 / 1</span>
-    <button id="next" class="secondary">次へ</button>
-  </div>
+  <!-- Loading Indicator -->
+  <div id="loading" class="text-center muted" aria-live="polite" style="display:none; padding: 2rem;">読み込み中…</div>
 
-  <!-- テーブル -->
-  <div id="tableView" class="table-wrap" style="display:none;">
-    <table id="tbl">
-      <thead></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <section class="card" id="areaPanel">
+    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <div>
+        <h2>ステップ1：お住まいの地域を選択</h2>
+        <p id="areaHelp" class="muted text-sm">まず都道府県を選び、市区町村を選択すると検索ができるようになります。</p>
+      </div>
+      <button id="areaPanelToggle" class="btn btn-sm btn-secondary" type="button" aria-expanded="true" aria-controls="areaPanelBody">エリア選択を閉じる</button>
+    </div>
+    <div id="areaPanelBody">
+      <div class="area-controls">
+        <label><span data-i18n="labels.prefecture">都道府県</span><br>
+          <select id="prefSelect" aria-describedby="areaHelp selectedAreaLabel">
+            <option value="">選択してください</option>
+          </select>
+        </label>
+        <label><span data-i18n="labels.city">市区町村</span><br>
+          <select id="citySelect" disabled aria-describedby="areaHelp selectedAreaLabel">
+            <option value="">まず都道府県を選択してください</option>
+          </select>
+        </label>
+      </div>
+      <p id="selectedAreaLabel" class="text-sm" style="margin-top: 1rem; font-weight: 600;" aria-live="polite" role="status">現在選択中: 未選択</p>
+    </div>
+  </section>
 
-  <!-- カード -->
-  <div id="cardView" class="cards" style="display:none;"></div>
+  <section class="card search-panel">
+    <div style="margin-bottom: 1rem;">
+      <h2>ステップ2：選択した自治体で検索</h2>
+      <p id="resultSummary" class="muted text-sm" aria-live="polite" role="status">自治体を選択すると検索結果が表示されます。</p>
+    </div>
+    
+    <div id="searchGuard" class="warning-box" style="background: #fffbeb; color: #92400e; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;" hidden aria-live="polite" role="status">都道府県と市区町村を選ぶと検索できます。</div>
+    
+    <div id="municipalitySummary" class="municipality-summary" role="status" aria-live="polite"></div>
+    
+    <div class="filters-grid">
+      <label><span data-i18n="labels.category">カテゴリ</span><br>
+        <select id="catSelect" aria-describedby="resultSummary searchGuard">
+          <option value="">すべて</option>
+        </select>
+      </label>
+      <label><span data-i18n="labels.keyword">キーワード</span><br>
+        <input id="q" type="search" data-i18n="placeholders.keyword" placeholder="品名・注記・出し方など" aria-describedby="resultSummary searchGuard" />
+      </label>
+      <div style="display: flex; gap: 0.5rem;">
+        <button id="search" class="btn btn-primary" style="flex: 2;" aria-label="検索" type="button" data-i18n="actions.search">検索</button>
+        <button id="reset" class="btn btn-secondary" style="flex: 1;" aria-label="リセット" type="button" data-i18n="actions.reset">リセット</button>
+      </div>
+    </div>
+
+    <div class="view-controls" style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <label class="muted text-sm" data-i18n="labels.display">表示</label>
+        <select id="languageSelect" aria-label="Language" style="width: auto; padding: 0.25rem 0.5rem;">
+          <option value="ja">日本語</option>
+          <option value="en">English</option>
+        </select>
+        <select id="displayMode" style="width: auto; padding: 0.25rem 0.5rem;">
+          <option value="auto" selected>自動</option>
+          <option value="cards">カード</option>
+          <option value="table">表</option>
+        </select>
+      </div>
+      
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <label class="muted text-sm" data-i18n="labels.perPage">件数</label>
+        <select id="pageSize" style="width: auto; padding: 0.25rem 0.5rem;"><option>25</option><option selected>50</option><option>100</option><option>200</option></select>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem;">
+        <button id="prev" class="btn btn-sm btn-secondary" aria-label="前へ" type="button" data-i18n="actions.prev">前へ</button>
+        <span id="pageInfo" class="muted text-sm" style="display: flex; align-items: center;" role="status" aria-live="polite">1 / 1</span>
+        <button id="next" class="btn btn-sm btn-secondary" aria-label="次へ" type="button" data-i18n="actions.next">次へ</button>
+      </div>
+      
+      <button id="copyResultsTsv" class="btn btn-sm btn-secondary" type="button">TSVコピー</button>
+      <span id="copyResultsStatus" class="sr-only" aria-live="polite"></span>
+      <div id="resultsLive" class="sr-only" aria-live="polite" role="status"></div>
+    </div>
+
+    <div id="tableView" class="table-wrap" style="display:none; margin-top: 1rem;">
+      <table id="tbl">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="cardView" class="cards" style="display:none; margin-top: 1rem;"></div>
+  </section>
 </main>
 
-<footer>
+<footer style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.875rem;">
   <small>© gomi-site | 自治体公式サイトの情報を出典としています。</small>
 </footer>
 
-<!-- 詳細モーダル -->
-<dialog id="detailDialog" class="modal">
-  <article>
-    <header>
-      <h3 id="detailTitle">詳細</h3>
-      <button id="detailClose" class="close-btn" aria-label="閉じる" type="button">&times;</button>
-    </header>
-    <div class="kv" id="detailBody"></div>
-  </article>
+<dialog id="detailDialog" aria-modal="true" aria-labelledby="detailTitle">
+  <div class="modal-header">
+    <h3 id="detailTitle">詳細</h3>
+    <button id="detailClose" class="close-btn" aria-label="閉じる" type="button">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div class="kv" id="detailBody" style="display: grid; grid-template-columns: 1fr; gap: 1rem;"></div>
+  </div>
 </dialog>
 
+<script id="embedded-data" type="application/json">
+{
+  "version": "0.1",
+  "rows": [
+    {
+      "prefecture": "神奈川県",
+      "municipality_type": "政令市",
+      "municipality_name": "横浜市",
+      "category_name": "燃やすごみ",
+      "category_code": "burnable",
+      "item_name": "台所ごみ など",
+      "item_name_en": "Kitchen waste",
+      "pickup_method": "ステーション",
+      "frequency": "週2回",
+      "how_to_en": "Place kitchen waste in the burnable collection bag.",
+      "source_url": "https://www.city.yokohama.lg.jp/..."
+    }
+  ]
+}
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "fuse.js": "./vendor/fuse.mjs"
+  }
+}
+</script>
 <script type="module" src="src/app.js"></script>
+
+</body>
 </html>

@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ごみデータ確認ツール</title>
+<link rel="stylesheet" href="https://unpkg.com/mvp.css">
+<style>
+  body {
+    background: #f5f6fb;
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 12px 40px;
+  }
+
+  section {
+    margin-bottom: 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 16px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .05);
+  }
+
+  h1 {
+    margin-top: 0;
+  }
+
+  .ops-controls {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    align-items: end;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: 8px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  th {
+    background: #f8fafc;
+    text-align: left;
+  }
+
+  #opsLoading {
+    text-align: center;
+    margin-top: 12px;
+    color: #475569;
+  }
+
+  #opsSample ol {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  #opsSample li {
+    margin-bottom: 8px;
+  }
+
+  #opsCategoryStats ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  #opsCategoryStats li {
+    margin-bottom: 4px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .stat-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f8fafc;
+  }
+
+  .stat-card h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    color: #475569;
+  }
+
+  .stat-value {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .diag-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .diag-box section {
+    border: 1px dashed #c7d2fe;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f8fbff;
+  }
+
+  .diag-list {
+    max-height: 220px;
+    overflow: auto;
+    margin: 8px 0 0;
+    padding-left: 20px;
+  }
+
+  #copyLowList {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  @media (max-width:600px) {
+    .ops-controls {
+      grid-template-columns: 1fr;
+    }
+
+    button,
+    select {
+      width: 100%;
+    }
+  }
+</style>
+
+<body>
+  <main>
+    <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <div>
+        <h1>データ管理ダッシュボード</h1>
+        <p class="muted">ごみ分別データの管理・確認・更新を行います。</p>
+      </div>
+      <div>
+        <a href="/" class="button"
+          style="text-decoration:none; padding:8px 16px; background:#e2e8f0; border-radius:6px; color:#334155;">サイトへ戻る</a>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-data">データ管理</button>
+      <button class="tab-btn" data-tab="tab-muni">自治体オペレーション</button>
+      <button class="tab-btn" data-tab="tab-url">URL一括チェック</button>
+    </div>
+
+    <!-- Tab 1: Data Management -->
+    <div id="tab-data" class="tab-content active">
+      <div class="stats-grid" id="opsStatsHighlights"></div>
+
+      <div class="diag-box">
+        <section>
+          <h3>データ更新</h3>
+          <p class="muted text-sm">新しいExcelファイルをアップロードしてデータを再構築します。</p>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <a href="/api/download-template" target="_blank" class="button"
+              style="text-decoration:none; padding:8px 16px; background:#fff; border:1px solid #cbd5e1; border-radius:6px;">ひな型DL
+              (.xlsx)</a>
+          </div>
+          <div style="margin-top:16px; border-top:1px solid #e2e8f0; padding-top:16px;">
+            <label style="display:block; margin-bottom:8px; font-weight:bold;">Excelアップロード</label>
+            <input type="file" id="excelUploadInput" accept=".xlsx" style="width:100%;">
+            <button id="uploadExcelBtn" type="button" style="margin-top:8px;">アップロード</button>
+            <p id="excelUploadStatus" class="text-sm" style="margin-top:4px;"></p>
+          </div>
+          <div style="margin-top:16px; border-top:1px solid #e2e8f0; padding-top:16px;">
+            <label style="display:block; margin-bottom:8px; font-weight:bold;">データ再構築</label>
+            <p class="muted text-sm">アップロードしたファイルを反映するには再構築が必要です。</p>
+            <button id="rebuildDataBtn" type="button"
+              style="background:#3b82f6; color:white; border:none;">データを再構築する</button>
+            <pre id="rebuildLog"
+              style="margin-top:8px; background:#1e293b; color:#e2e8f0; padding:12px; border-radius:6px; font-size:12px; max-height:200px; overflow:auto; display:none;"></pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>データ診断</h3>
+          <div id="diagLists">
+            <h4>0件の自治体</h4>
+            <ul id="opsZeroList" class="diag-list">
+              <li>集計中…</li>
+            </ul>
+            <h4>5件以下の自治体</h4>
+            <ul id="opsLowList" class="diag-list">
+              <li>集計中…</li>
+            </ul>
+          </div>
+          <button id="copyLowList" type="button" style="margin-top:12px;">リストを TSV でコピー</button>
+        </section>
+      </div>
+    </div>
+
+    <!-- Tab 2: Municipality Operations -->
+    <div id="tab-muni" class="tab-content">
+      <section>
+        <h2>自治体選択</h2>
+        <div class="ops-controls">
+          <label>都道府県<select id="opsPrefSelect">
+              <option value="">都道府県を選択</option>
+            </select></label>
+          <label>市区町村<select id="opsCitySelect" disabled>
+              <option value="">市区町村を選択</option>
+            </select></label>
+        </div>
+        <p id="opsMunicipalitySummary" class="muted" style="margin-top:12px;">市区町村を選択すると詳細が表示されます。</p>
+      </section>
+
+      <section id="muniDetailSection" style="display:none;">
+        <div class="ops-controls" style="margin-bottom:16px;">
+          <button id="checkCityUrls" type="button">この自治体のURLをチェック</button>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="exportFormat">
+              <option value="json">JSON</option>
+              <option value="tsv">TSV</option>
+            </select>
+            <button id="exportMunicipality" type="button">エクスポート</button>
+            <button id="copyExport" type="button">コピー</button>
+          </div>
+        </div>
+        <div id="cityUrlCheckStatus"
+          style="margin-bottom:16px; padding:12px; background:#fffbeb; border-radius:8px; display:none;"></div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+          <div>
+            <h3>カテゴリ内訳</h3>
+            <div id="opsCategoryStats" class="muted"></div>
+          </div>
+          <div>
+            <h3>登録サンプル (10件)</h3>
+            <div id="opsSample"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label>エクスポート結果<textarea id="exportOutput" readonly placeholder="ここに JSON / TSV が表示されます"></textarea></label>
+        </div>
+      </section>
+    </div>
+
+    <!-- Tab 3: URL Check -->
+    <div id="tab-url" class="tab-content">
+      <section>
+        <h2>URL リンク切れチェック (全件)</h2>
+        <div class="ops-controls">
+          <button id="checkAllUrls" type="button">全URLをチェック</button>
+          <button id="refreshUrlReport" type="button">レポート更新</button>
+        </div>
+        <div id="urlCheckStatus"
+          style="margin-top:12px; padding:12px; background:#fffbeb; border-radius:8px; display:none;"></div>
+
+        <div class="diag-box">
+          <section>
+            <h3>NG URL 一覧</h3>
+            <p class="muted text-sm">チェック結果のNG URLリストです。</p>
+            <ul id="ngUrlList" class="diag-list">
+              <li>(未チェック)</li>
+            </ul>
+            <button id="downloadNgCsv" type="button" style="margin-top:8px; width:100%;">NGリストをCSVでDL</button>
+          </section>
+          <section>
+            <h3>修正用CSVアップロード</h3>
+            <p class="muted text-sm">DLしたCSVに「置き換え後URL」を記入してアップロードしてください。</p>
+            <input type="file" id="fixCsvInput" accept=".csv" style="margin-top:8px; width:100%;">
+            <button id="uploadFixCsv" type="button" style="margin-top:8px; width:100%;">修正を適用</button>
+            <p id="uploadStatus" class="text-sm" style="margin-top:4px;"></p>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <div id="opsLoading"></div>
+  </main>
+  <script id="embedded-data" type="application/json">
+  {
+    "version": "0.1",
+    "rows": []
+  }
+  </script>
+  <script type="module" src="src/ops-app.js"></script>
+  <style>
+    /* Dashboard Styles */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-weight: bold;
+      color: #64748b;
+    }
+
+    .tab-btn.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .button {
+      cursor: pointer;
+      display: inline-block;
+      text-align: center;
+    }
+  </style>
+</body>
+
+</html>
